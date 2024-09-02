@@ -73,44 +73,22 @@ public class UserController {
 
     @GetMapping("/available_services/{userId}")
     public Map<String, List<?>> getAvailableServicesForUpgradeOrDowngrade(@PathVariable Integer userId) {
- 
-    	    // Fetch active subscribed internet services for the user
-    	    List<InternetServiceAvailed> internetServices = internetServiceAvailedService.getActiveSubscribedServices(userId);
-    	    
-    	    // Fetch active subscribed TV services for the user
-    	    List<TvServiceAvailed> tvServices = tvServiceAvailedService.getActiveSubscribedServices(userId);
+        List<InternetServiceAvailed> subscribedInternetServices = internetServiceAvailedService.getActiveSubscribedServices(userId);
+        List<TvServiceAvailed> subscribedTvServices = tvServiceAvailedService.getActiveSubscribedServices(userId);
 
-    	    // Extract the service types from the active internet services
-    	    List<String> currentInternetServiceTypes = internetServices.stream()
-    	        .filter(InternetServiceAvailed::getActive) // Only active services
-    	        .map(service -> service.getInternetService().getServiceType()) // Get the service type
-    	        .distinct()
-    	        .collect(Collectors.toList());
+        List<InternetService> availableInternetServices = subscribedInternetServices.isEmpty() ?
+            internetServiceUpDownGrade.findAll() :
+            internetServiceUpDownGrade.findAllExceptType(subscribedInternetServices.get(0).getInternetService().getServiceType());
 
-    	    // Extract the service types from the active TV services
-    	    List<String> currentTvServiceTypes = tvServices.stream()
-    	        .filter(TvServiceAvailed::getActive) // Only active services
-    	        .map(service -> service.getTvService().getServiceType()) // Get the service type
-    	        .distinct()
-    	        .collect(Collectors.toList());
+        List<TvService> availableTvServices = subscribedTvServices.isEmpty() ?
+            tvServiceUpDownGrade.findAll() :
+            tvServiceUpDownGrade.findAllExceptType(subscribedTvServices.get(0).getTvService().getServiceType());
 
-    	    // Find available internet services for upgrade/downgrade excluding current service types
-    	    List<InternetService> availableInternetServices = currentInternetServiceTypes.stream()
-    	        .flatMap(type -> internetServiceUpDownGrade.findAllExceptType(type).stream())
-    	        .distinct()
-    	        .collect(Collectors.toList());
-
-    	    // Find available TV services for upgrade/downgrade excluding current service types
-    	    List<TvService> availableTvServices = currentTvServiceTypes.stream()
-    	        .flatMap(type -> tvServiceUpDownGrade.findAllExceptType(type).stream())
-    	        .distinct()
-    	        .collect(Collectors.toList());
-
-    	    return Map.of(
-    	        "internetServices", availableInternetServices,
-    	        "tvServices", availableTvServices
-    	    );
-    	}
+        return Map.of(
+            "internetServices", availableInternetServices,
+            "tvServices", availableTvServices
+        );
+    }
 
     @PostMapping("/deactivate_internet_service")
     public void deactivateInternetService(
